@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Bắn chim</title>
+<style>
+canvas{background:skyblue;display:block;margin:auto}
+</style>
+</head>
+
+<body>
+
+<canvas id="game" width="500" height="400"></canvas>
+
+<script>
+let canvas = document.getElementById("game")
+let ctx = canvas.getContext("2d")
+
+let birdX = 0
+let birdY = 100
+
+canvas.addEventListener("click",(e)=>{
+
+let x = e.offsetX
+let y = e.offsetY
+
+if(x>birdX && x<birdX+40 && y>birdY && y<birdY+30){
+birdX = 0
+birdY = Math.random()*200
+}
+
+})
+
+function draw(){
+
+ctx.clearRect(0,0,500,400)
+
+birdX += 2
+
+if(birdX>500){
+birdX = 0
+birdY = Math.random()*200
+}
+
+ctx.fillStyle="black"
+ctx.fillRect(birdX,birdY,40,30)
+
+requestAnimationFrame(draw)
+
+}
+
+draw()
+</script>
+
+</body>
+</html>

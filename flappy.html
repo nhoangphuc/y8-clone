@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Flappy Bird</title>
+<style>
+canvas{
+background:skyblue;
+display:block;
+margin:auto;
+}
+</style>
+</head>
+
+<body>
+
+<canvas id="game" width="400" height="500"></canvas>
+
+<script>
+let canvas = document.getElementById("game")
+let ctx = canvas.getContext("2d")
+
+let birdY = 200
+let velocity = 0
+let gravity = 0.5
+
+let pipeX = 400
+let gap = 120
+let pipeTop = Math.random()*200
+
+function draw(){
+
+ctx.clearRect(0,0,400,500)
+
+velocity += gravity
+birdY += velocity
+
+ctx.fillStyle="yellow"
+ctx.fillRect(100,birdY,20,20)
+
+pipeX -= 2
+
+if(pipeX < -50){
+pipeX = 400
+pipeTop = Math.random()*200
+}
+
+ctx.fillStyle="green"
+
+ctx.fillRect(pipeX,0,50,pipeTop)
+ctx.fillRect(pipeX,pipeTop+gap,50,500)
+
+requestAnimationFrame(draw)
+
+}
+
+document.addEventListener("keydown",()=>{
+velocity = -8
+})
+
+draw()
+</script>
+
+</body>
+</html>
