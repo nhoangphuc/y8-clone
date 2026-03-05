@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Flappy Bird</title>
+
+<style>
+
+body{
+margin:0;
+overflow:hidden;
+}
+
+.background{
+width:100%;
+height:100vh;
+background:skyblue;
+position:relative;
+}
+
+.bird{
+position:absolute;
+top:40vh;
+left:20vw;
+width:60px;
+}
+
+.pipe_sprite{
+position:absolute;
+width:50px;
+height:70vh;
+background:green;
+}
+
+.score{
+position:absolute;
+top:20px;
+left:20px;
+font-size:30px;
+color:white;
+}
+
+.message{
+position:absolute;
+top:50%;
+left:50%;
+transform:translate(-50%,-50%);
+font-size:30px;
+color:white;
+text-align:center;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="background">
+<img src="images/b1.png" class="bird">
+</div>
+
+<div class="score">
+<span class="score_title">Điểm : </span>
+<span class="score_val">0</span>
+</div>
+
+<div class="message">Ấn Enter hoặc Click để bắt đầu</div>
+
+<script>
+
+/* ==== CODE JS CỦA BẠN ==== */
+
+let move_speed = 3;
+let gravity = 0.3;
+let jump_force = -8;
+
+let bird = document.querySelector('.bird');
+let background = document.querySelector('.background');
+let score_val = document.querySelector('.score_val');
+let message = document.querySelector('.message');
+
+let bird_imgs = [
+'images/b1.png',
+'images/b2.png',
+'images/b3.png',
+'images/b4.png'
+];
+
+let bird_img_index = 0;
+
+let game_state = 'Start';
+let bird_dy = 0;
+
+let animation_id;
+let gravity_id;
+let pipe_id;
+let bird_anim_id;
+
+let score = 0;
+let level = 1;
+let pipe_gap = 35;
+let pipe_sep = 0;
+
+document.addEventListener('mousedown',()=>{
+
+if(game_state!=='Play'){
+resetGame()
+startGame()
+return
+}
+
+bird_dy = jump_force
+
+})
+
+document.addEventListener('keydown',(e)=>{
+if(e.key==='Enter' && game_state!=='Play'){
+resetGame()
+startGame()
+}
+})
+
+function startGame(){
+
+game_state='Play'
+message.innerHTML=''
+
+score=0
+level=1
+bird_dy=0
+
+updateUI()
+
+move()
+apply_gravity()
+create_pipe()
+animate_bird()
+
+}
+
+function resetGame(){
+
+document.querySelectorAll('.pipe_sprite').forEach(p=>p.remove())
+
+bird.style.top='40vh'
+bird.style.transform='rotate(0deg)'
+
+bird_dy=0
+move_speed=3
+pipe_gap=35
+pipe_sep=0
+
+cancelAnimationFrame(animation_id)
+cancelAnimationFrame(gravity_id)
+cancelAnimationFrame(pipe_id)
+clearTimeout(bird_anim_id)
+
+}
+
+function updateUI(){
+score_val.innerHTML=`Score: ${score} | Level: ${level}`
+}
+
+function move(){
+
+if(game_state!=='Play') return
+
+document.querySelectorAll('.pipe_sprite').forEach(pipe=>{
+
+let pipeRect = pipe.getBoundingClientRect()
+let birdRect = bird.getBoundingClientRect()
+
+if(pipeRect.right<=0){
+pipe.remove()
+}
+else{
+
+if(
+birdRect.left < pipeRect.left + pipeRect.width &&
+birdRect.left + birdRect.width > pipeRect.left &&
+birdRect.top < pipeRect.top + pipeRect.height &&
+birdRect.top + birdRect.height > pipeRect.top
+){
+endGame()
+}
+
+if(pipe.dataset.score==='1' && pipeRect.right<birdRect.left){
+score++
+pipe.dataset.score='0'
+checkLevelUp()
+updateUI()
+}
+
+pipe.style.left = pipe.offsetLeft - move_speed + 'px'
+
+}
+
+})
+
+animation_id=requestAnimationFrame(move)
+
+}
+
+function apply_gravity(){
+
+if(game_state!=='Play') return
+
+bird_dy+=gravity
+
+let bird_top = bird.offsetTop + bird_dy
+
+let rotation = bird_dy*3
+if(rotation>90) rotation=90
+if(rotation<-25) rotation=-25
+
+bird.style.transform=`rotate(${rotation}deg)`
+
+if(
+bird_top<=0 ||
+bird_top+bird.offsetHeight>=background.offsetHeight
+){
+endGame()
+return
+}
+
+bird.style.top = bird_top + 'px'
+
+gravity_id=requestAnimationFrame(apply_gravity)
+
+}
+
+function create_pipe(){
+
+if(game_state!=='Play') return
+
+if(pipe_sep>115){
+
+pipe_sep=0
+
+let y=Math.floor(Math.random()*40)+10
+
+let pipe_top=document.createElement('div')
+pipe_top.className='pipe_sprite'
+pipe_top.style.top = y-70+'vh'
+pipe_top.style.left='100vw'
+background.appendChild(pipe_top)
+
+let pipe_bot=document.createElement('div')
+pipe_bot.className='pipe_sprite'
+pipe_bot.style.top = y + pipe_gap + 'vh'
+pipe_bot.style.left='100vw'
+pipe_bot.dataset.score='1'
+
+background.appendChild(pipe_bot)
+
+}
+
+pipe_sep++
+
+pipe_id=requestAnimationFrame(create_pipe)
+
+}
+
+function checkLevelUp(){
+
+if(score%5===0){
+
+level++
+move_speed+=0.7
+pipe_gap-=2
+
+if(pipe_gap<20) pipe_gap=20
+
+}
+
+}
+
+function animate_bird(){
+
+if(game_state!=='Play') return
+
+bird_img_index=(bird_img_index+1)%bird_imgs.length
+bird.src=bird_imgs[bird_img_index]
+
+bird_anim_id=setTimeout(animate_bird,120)
+
+}
+
+function endGame(){
+
+game_state='End'
+
+cancelAnimationFrame(animation_id)
+cancelAnimationFrame(gravity_id)
+cancelAnimationFrame(pipe_id)
+clearTimeout(bird_anim_id)
+
+message.innerHTML=
+`Game Over<br>Score: ${score}<br>Level: ${level}<br>Click để chơi lại`
+
+}
+
+</script>
+
+</body>
+</html>

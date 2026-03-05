@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Game Máy Bay</title>
+
+<style>
+body{
+margin:0;
+overflow:hidden;
+}
+canvas{
+display:block;
+}
+</style>
+
+</head>
+<body>
+
+<canvas id="gamecv"></canvas>
+
+<script>
+
+// ================= CANVAS =================
+const canvas = document.getElementById("gamecv");
+const ctx = canvas.getContext("2d");
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+// ================= IMAGE =================
+const planeimg = new Image();
+planeimg.src = "ImageGames/maybay.png";
+
+const birdImgs = [];
+for (let i = 1; i <= 4; i++) {
+  const img = new Image();
+  img.src = `ImageGames/frame-${i}.png`;
+  birdImgs.push(img);
+}
+
+const fuelimg = new Image();
+fuelimg.src = "ImageGames/nhienlieu.png";
+
+const starimg = new Image();
+starimg.src = "ImageGames/star.png";
+
+const heartimg = new Image();
+heartimg.src = "ImageGames/heart.png";
+
+const bossimg = new Image();
+bossimg.src = "ImageGames/boss.png";
+
+const backgroundimg = new Image();
+backgroundimg.src = "ImageGames/background.png";
+
+// ================= CONST =================
+const SIZE = 50;
+
+// ================= PLANE =================
+const plane = {
+  x: 80,
+  y: canvas.height / 2,
+  width: SIZE,
+  height: SIZE,
+  speed: 10,
+};
+
+// ================= OBJECT =================
+const obstacles = [];
+const fuels = [];
+const stars = [];
+const bullets = [];
+const hearts = [];
+let boss = null;
+
+// ================= STATE =================
+let score = 0;
+let time = 30;
+let lives = 3;
+let level = 1;
+let isGameOver = false;
+
+let weaponLevel = 1;
+let starCount = 0;
+
+let showLevelUp = false;
+let levelUpTimer = 0;
+
+// ================= LEVEL =================
+const levelConfig = {
+  1:{speed:3,spawn:1000,target:100},
+  2:{speed:6,spawn:700,target:300},
+  3:{speed:9,spawn:500,target:500}
+};
+
+// ================= SPAWN =================
+function spawnObstacle(){
+  obstacles.push({
+    x:canvas.width,
+    y:Math.random()*(canvas.height-SIZE),
+    speed:levelConfig[level].speed+Math.random()*2
+  });
+}
+
+function spawnFuel(){
+  fuels.push({
+    x:canvas.width,
+    y:Math.random()*(canvas.height-SIZE)
+  });
+}
+
+function spawnStar(){
+  stars.push({
+    x:canvas.width,
+    y:Math.random()*(canvas.height-SIZE)
+  });
+}
+
+function spawnHeart(){
+  if(lives<3){
+    hearts.push({
+      x:canvas.width,
+      y:Math.random()*(canvas.height-40)
+    });
+  }
+}
+
+function spawnBoss(){
+  boss={
+    x:canvas.width-220,
+    y:canvas.height/2-100,
+    width:180,
+    height:180,
+    hp:30
+  };
+}
+
+// ================= CONTROL =================
+const keys={};
+
+document.addEventListener("keydown",e=>keys[e.key]=true);
+document.addEventListener("keyup",e=>keys[e.key]=false);
+
+function updatePlane(){
+
+if(keys["ArrowUp"]) plane.y-=plane.speed;
+if(keys["ArrowDown"]) plane.y+=plane.speed;
+if(keys["ArrowLeft"]) plane.x-=plane.speed;
+if(keys["ArrowRight"]) plane.x+=plane.speed;
+
+if(plane.y<0) plane.y=0;
+if(plane.y>canvas.height-plane.height)
+plane.y=canvas.height-plane.height;
+
+if(plane.x<0) plane.x=0;
+if(plane.x>canvas.width-plane.width)
+plane.x=canvas.width-plane.width;
+}
+
+// ================= AUTO SHOOT =================
+setInterval(()=>{
+
+if(isGameOver) return;
+if(bullets.length>40) return;
+
+const x=plane.x+plane.width;
+const y=plane.y+plane.height/2;
+
+if(weaponLevel===1){
+bullets.push({x,y,vy:0});
+}
+else if(weaponLevel===2){
+bullets.push(
+{x,y:y-10,vy:0},
+{x,y:y+10,vy:0}
+);
+}
+else{
+bullets.push(
+{x,y,vy:0},
+{x,y:y-15,vy:-0.6},
+{x,y:y+15,vy:0.6}
+);
+}
+
+},200);
+
+// ================= COLLISION =================
+function checkCollision(){
+
+for(let i=bullets.length-1;i>=0;i--){
+for(let j=obstacles.length-1;j>=0;j--){
+
+if(
+bullets[i].x<obstacles[j].x+SIZE &&
+bullets[i].x+10>obstacles[j].x &&
+bullets[i].y<obstacles[j].y+SIZE &&
+bullets[i].y+4>obstacles[j].y
+){
+bullets.splice(i,1);
+obstacles.splice(j,1);
+score+=5;
+break;
+}
+
+}
+}
+
+for(let i=obstacles.length-1;i>=0;i--){
+if(
+plane.x<obstacles[i].x+SIZE &&
+plane.x+plane.width>obstacles[i].x &&
+plane.y<obstacles[i].y+SIZE &&
+plane.y+plane.height>obstacles[i].y
+){
+obstacles.splice(i,1);
+lives--;
+
+weaponLevel=1;
+starCount=0;
+
+if(lives<=0) gameOver();
+}
+}
+
+for(let i=stars.length-1;i>=0;i--){
+if(
+plane.x<stars[i].x+SIZE &&
+plane.x+plane.width>stars[i].x &&
+plane.y<stars[i].y+SIZE &&
+plane.y+plane.height>stars[i].y
+){
+stars.splice(i,1);
+score+=10;
+starCount++;
+
+if(starCount>=3 && weaponLevel<3){
+weaponLevel++;
+starCount=0;
+}
+
+}
+}
+
+for(let i=fuels.length-1;i>=0;i--){
+if(
+plane.x<fuels[i].x+SIZE &&
+plane.x+plane.width>fuels[i].x &&
+plane.y<fuels[i].y+SIZE &&
+plane.y+plane.height>fuels[i].y
+){
+fuels.splice(i,1);
+time=Math.min(time+10,60);
+}
+}
+
+for(let i=hearts.length-1;i>=0;i--){
+if(
+plane.x<hearts[i].x+40 &&
+plane.x+plane.width>hearts[i].x &&
+plane.y<hearts[i].y+40 &&
+plane.y+plane.height>hearts[i].y
+){
+hearts.splice(i,1);
+lives++;
+}
+}
+
+if(boss){
+for(let i=bullets.length-1;i>=0;i--){
+if(
+bullets[i].x<boss.x+boss.width &&
+bullets[i].x+10>boss.x &&
+bullets[i].y<boss.y+boss.height &&
+bullets[i].y+4>boss.y
+){
+bullets.splice(i,1);
+boss.hp--;
+
+if(boss.hp<=0){
+alert("🏆 CHIẾN THẮNG! ĐIỂM: "+score);
+location.reload();
+}
+}
+}
+}
+
+}
+
+// ================= LEVEL =================
+function checkLevelUp(){
+
+if(level<3 && score>=levelConfig[level].target){
+
+level++;
+
+showLevelUp=true;
+levelUpTimer=120;
+
+restartSpawn();
+
+if(level===3) spawnBoss();
+
+}
+
+}
+
+// ================= GAME LOOP =================
+let birdFrame=0;
+let birdDelay=0;
+
+function gameloop(){
+
+if(isGameOver) return;
+
+ctx.clearRect(0,0,canvas.width,canvas.height);
+
+ctx.drawImage(backgroundimg,0,0,canvas.width,canvas.height);
+
+updatePlane();
+
+checkCollision();
+
+checkLevelUp();
+
+obstacles.forEach(o=>{
+
+o.x-=o.speed;
+
+birdDelay++;
+if(birdDelay>6){
+birdFrame=(birdFrame+1)%birdImgs.length;
+birdDelay=0;
+}
+
+ctx.drawImage(birdImgs[birdFrame],o.x,o.y,SIZE,SIZE);
+
+});
+
+ctx.fillStyle="red";
+
+for(let i=bullets.length-1;i>=0;i--){
+
+bullets[i].x+=12+level*2;
+bullets[i].y+=bullets[i].vy||0;
+
+ctx.fillRect(bullets[i].x,bullets[i].y,10,4);
+
+}
+
+fuels.forEach(f=>{
+f.x-=2+level;
+ctx.drawImage(fuelimg,f.x,f.y,SIZE,SIZE);
+});
+
+stars.forEach(s=>{
+s.x-=1+level;
+ctx.drawImage(starimg,s.x,s.y,SIZE,SIZE);
+});
+
+hearts.forEach(h=>{
+h.x-=1.5;
+ctx.drawImage(heartimg,h.x,h.y,40,40);
+});
+
+if(boss){
+boss.y+=Math.sin(Date.now()/400)*2;
+ctx.drawImage(bossimg,boss.x,boss.y,boss.width,boss.height);
+}
+
+ctx.drawImage(planeimg,plane.x,plane.y,plane.width,plane.height);
+
+time-=1/60;
+
+ctx.fillStyle="black";
+ctx.font="20px Arial";
+
+ctx.fillText("Điểm: "+score,20,30);
+ctx.fillText("Màn: "+level,140,30);
+ctx.fillText("Tim: "+lives,220,30);
+ctx.fillText("Năng lượng: "+Math.round(time),300,30);
+ctx.fillText("Vũ khí: Lv "+weaponLevel,480,30);
+
+if(showLevelUp){
+
+ctx.fillStyle="rgba(0,0,0,0.6)";
+ctx.fillRect(0,0,canvas.width,canvas.height);
+
+ctx.fillStyle="yellow";
+ctx.font="bold 60px Arial";
+ctx.textAlign="center";
+
+ctx.fillText("LEVEL UP!",canvas.width/2,canvas.height/2);
+
+ctx.textAlign="left";
+
+levelUpTimer--;
+
+if(levelUpTimer<=0) showLevelUp=false;
+
+}
+
+if(time<=0) gameOver();
+
+requestAnimationFrame(gameloop);
+
+}
+
+// ================= GAME OVER =================
+function gameOver(){
+isGameOver=true;
+alert("💀 GAME OVER! ĐIỂM: "+score);
+location.reload();
+}
+
+// ================= START =================
+let obstacleInterval;
+
+function restartSpawn(){
+clearInterval(obstacleInterval);
+obstacleInterval=setInterval(spawnObstacle,levelConfig[level].spawn);
+}
+
+restartSpawn();
+
+setInterval(spawnFuel,7000);
+setInterval(spawnStar,6000);
+setInterval(spawnHeart,10000);
+
+gameloop();
+
+</script>
+
+</body>
+</html>
